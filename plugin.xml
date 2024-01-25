@@ -79,9 +79,9 @@
         <resource-file src="src/android/res/drawable-xxhdpi/ic_back_edittext.png" target="res/drawable-xxhdpi/ic_back_edittext.png" />
 
 
-                <resource-file src="src/android/res/drawable/bg_stay.png" target="res/drawable/bg_stay.png" />
-                <resource-file src="src/android/res/drawable/bg_continue.png" target="res/drawable/bg_continue.png" />
-                <resource-file src="src/android/res/drawable/bg_back_button.png" target="res/drawable/bg_back_button.png" />
+                <resource-file src="src/android/res/drawable/bg_stay.xml" target="res/drawable/bg_stay.xml" />
+                <resource-file src="src/android/res/drawable/bg_continue.xml" target="res/drawable/bg_continue.xml" />
+                <resource-file src="src/android/res/drawable/bg_back_button.xml" target="res/drawable/bg_back_button.xml" />
 
     </platform>
 
