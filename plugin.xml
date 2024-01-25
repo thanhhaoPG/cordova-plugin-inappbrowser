@@ -71,6 +71,18 @@
         <resource-file src="src/android/res/drawable-xhdpi/ic_lock_ssl.png" target="res/drawable-xhdpi/ic_lock_ssl.png" />
         <resource-file src="src/android/res/drawable-xxhdpi/ic_lock_ssl.png" target="res/drawable-xxhdpi/ic_lock_ssl.png" />
 
+
+
+        <resource-file src="src/android/res/drawable-hdpi/ic_back_edittext.png" target="res/drawable-hdpi/ic_back_edittext.png" />
+        <resource-file src="src/android/res/drawable-mdpi/ic_back_edittext.png" target="res/drawable-mdpi/ic_back_edittext.png" />
+        <resource-file src="src/android/res/drawable-xhdpi/ic_back_edittext.png" target="res/drawable-xhdpi/ic_back_edittext.png" />
+        <resource-file src="src/android/res/drawable-xxhdpi/ic_back_edittext.png" target="res/drawable-xxhdpi/ic_back_edittext.png" />
+
+
+                <resource-file src="src/android/res/drawable/bg_stay.xml" target="res/drawable/bg_stay.xml" />
+                <resource-file src="src/android/res/drawable/bg_continue.xml" target="res/drawable/bg_continue.xml" />
+                <resource-file src="src/android/res/drawable/bg_back_button.xml" target="res/drawable/bg_back_button.xml" />
+
     </platform>
 
     <!-- ios -->
