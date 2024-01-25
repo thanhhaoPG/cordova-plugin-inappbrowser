@@ -746,11 +746,37 @@ public class InAppBrowser extends CordovaPlugin {
                     // Use TextView for text
                     TextView close = new TextView(cordova.getActivity());
                     close.setText(closeButtonCaption);
-                    close.setTextSize(20);
+                    close.setTextSize(12);
+                    close.setTypeface(null, Typeface.BOLD);
+
                     if (closeButtonColor != "") close.setTextColor(android.graphics.Color.parseColor(closeButtonColor));
                     close.setGravity(android.view.Gravity.CENTER_VERTICAL);
-                    close.setPadding(this.dpToPixels(10), 0, this.dpToPixels(10), 0);
+                    close.setPadding(this.dpToPixels(12), this.dpToPixels(5), this.dpToPixels(12), this.dpToPixels(5));
+                 
+                    int closeResBg = activityRes.getIdentifier("bg_back_button", "drawable", cordova.getActivity().getPackageName());
+        // Set background
+        close.setBackgroundResource(closeResBg);
+
+    
+
+
+        // Set drawables right
+        int closeResResRight = activityRes.getIdentifier("ic_back_edittext", "drawable", cordova.getActivity().getPackageName());
+        Drawable closeRight = activityRes.getDrawable(closeResResRight);
+
+        close.setCompoundDrawablesWithIntrinsicBounds(null,null, closeRight, null);
+
+// Set compound drawable padding (adjust the value as needed)
+int drawablePadding = this.dpToPixels(5); // Set your desired padding in pixels
+close.setCompoundDrawablePadding(drawablePadding);
+
+
+       // close.setMinimumHeight(this.dpToPixels(35));
+
+
+
                     _close = close;
+
                 }
                 else {
                     ImageView close = new ImageView(cordova.getActivity());
@@ -764,11 +790,13 @@ public class InAppBrowser extends CordovaPlugin {
                     _close = close;
                 }
 
-                RelativeLayout.LayoutParams closeLayoutParams = new RelativeLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT);
+                RelativeLayout.LayoutParams closeLayoutParams = new RelativeLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
                 if (leftToRight) closeLayoutParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
                 else closeLayoutParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+                        closeLayoutParams.addRule(RelativeLayout.CENTER_VERTICAL);
+
                 _close.setLayoutParams(closeLayoutParams);
-                _close.setBackground(null);
+                // _close.setBackground(null);
 
                 _close.setContentDescription("Close Button");
                 _close.setId(Integer.valueOf(id));
