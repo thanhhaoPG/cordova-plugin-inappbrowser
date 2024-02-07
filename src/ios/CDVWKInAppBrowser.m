@@ -415,20 +415,37 @@ static CDVWKInAppBrowser* instance = nil;
 }
 
 
-//Synchronus helper for javascript evaluation
-- (void)evaluateJavaScript:(NSString *)script {
-    __block NSString* _script = script;
-    [self.inAppBrowserViewController.webView evaluateJavaScript:script completionHandler:^(id result, NSError *error) {
-        if (error == nil) {
-            if (result != nil) {
-                NSLog(@"%@", result);
-            }
-        } else {
-            NSLog(@"evaluateJavaScript error : %@ : %@", error.localizedDescription, _script);
-        }
-    }];
-}
 
+- (void)evaluateJavaScript:(NSString *)script {
+    if (self.inAppBrowserViewController.isWebViewLoaded) {
+        __block NSString* _script = script;
+        [self.inAppBrowserViewController.webView evaluateJavaScript:script completionHandler:^(id result, NSError *error) {
+            if (error == nil) {
+                if (result != nil) {
+                    NSLog(@"%@", result);
+                }
+            } else {
+                NSLog(@"evaluateJavaScript error: %@ : %@", error.localizedDescription, _script);
+            }
+        }];
+    } else {
+        NSLog(@"WebView chưa tải xong. Đợi tới sự kiện didFinishNavigation để thực thi mã JavaScript.");
+        
+        dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            dispatch_semaphore_signal(semaphore);
+        });
+        
+        while (!self.inAppBrowserViewController.isWebViewLoaded) {
+            if (dispatch_semaphore_wait(semaphore, DISPATCH_TIME_NOW) != 0) {
+                [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+            }
+        }
+        
+        [self evaluateJavaScript:script];
+    }
+}
 - (void)injectScriptCode:(CDVInvokedUrlCommand*)command
 {
     NSString* jsWrapper = nil;
@@ -616,6 +633,7 @@ static CDVWKInAppBrowser* instance = nil;
     NSLog(@"didStartProvisionalNavigation");
 //    self.inAppBrowserViewController.currentURL = theWebView.URL;
 }
+
 
 - (void)didFinishNavigation:(WKWebView*)theWebView
 {
@@ -895,7 +913,7 @@ BOOL isExiting = FALSE;
     if (_browserOptions.navigationbuttoncolor != nil) { // Set button color if user sets it in options
       self.backButton.tintColor = [self colorFromHexString:_browserOptions.navigationbuttoncolor];
     }
-
+    
     // Filter out Navigation Buttons if user requests so
     if (_browserOptions.hidenavigationbuttons) {
         if (_browserOptions.lefttoright) {
@@ -927,14 +945,48 @@ BOOL isExiting = FALSE;
 
 - (void)setCloseButtonTitle:(NSString*)title : (NSString*) colorString : (int) buttonIndex
 {
-    // the advantage of using UIBarButtonSystemItemDone is the system will localize it for you automatically
-    // but, if you want to set this yourself, knock yourself out (we can't set the title for a system Done button, so we have to create a new one)
     self.closeButton = nil;
+    
     // Initialize with title if title is set, otherwise the title will be 'Done' localized
-    self.closeButton = title != nil ? [[UIBarButtonItem alloc] initWithTitle:title style:UIBarButtonItemStyleBordered target:self action:@selector(close)] : [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(close)];
+    UIButton *customButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [customButton addTarget:self action:@selector(close) forControlEvents:UIControlEventTouchUpInside];
+    customButton.frame = CGRectMake(0, 0, 130, 30);
+    customButton.layer.cornerRadius = 10.0;
+    customButton.layer.masksToBounds = YES;
+    
+    // If color on closeButton is requested then initialize with that color, otherwise initialize with default color
+    UIColor *buttonTintColor = colorString != nil ? [self colorFromHexString:colorString] : [UIColor colorWithRed:60.0 / 255.0 green:136.0 / 255.0 blue:230.0 / 255.0 alpha:1];
+    customButton.tintColor = buttonTintColor;
+    
+    CGFloat backgroundAlpha = 0.2; // Điều chỉnh giá trị alpha ở đây để làm màu nền nhạt hơn
+    UIColor *buttonBackgroundColor = [buttonTintColor colorWithAlphaComponent:backgroundAlpha];
+    customButton.backgroundColor = buttonBackgroundColor;
+    
+    // Set the title with bold font
+    NSDictionary *attributes = @{NSFontAttributeName: [UIFont boldSystemFontOfSize:14.0]};
+    NSAttributedString *attributedTitle = [[NSAttributedString alloc] initWithString:title attributes:attributes];
+    [customButton setAttributedTitle:attributedTitle forState:UIControlStateNormal];
+    
+    // Add the right arrow icon to the button
+    UIImage *arrowImage = [UIImage systemImageNamed:@"arrowtriangle.right.fill"];
+    arrowImage = [arrowImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    arrowImage = [arrowImage imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    
+    CGSize newSize = CGSizeMake(arrowImage.size.width * 0.5, arrowImage.size.height * 0.5);
+    UIGraphicsBeginImageContextWithOptions(newSize, NO, 0.0);
+    [arrowImage drawInRect:CGRectMake(0, 0, newSize.width, newSize.height)];
+    UIImage *smallArrowImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    [customButton setImage:smallArrowImage forState:UIControlStateNormal];
+    
+     // Adjust the position of the arrow icon
+    customButton.imageEdgeInsets = UIEdgeInsetsMake(0, customButton.frame.size.width - smallArrowImage.size.width - 10, 0, 0);
+    
+    // Adjust the position of the title
+    customButton.titleEdgeInsets = UIEdgeInsetsMake(0, 5, 0, smallArrowImage.size.width + 10);
+    self.closeButton = [[UIBarButtonItem alloc] initWithCustomView:customButton];
     self.closeButton.enabled = YES;
-    // If color on closebutton is requested then initialize with that that color, otherwise use initialize with default
-    self.closeButton.tintColor = colorString != nil ? [self colorFromHexString:colorString] : [UIColor colorWithRed:60.0 / 255.0 green:136.0 / 255.0 blue:230.0 / 255.0 alpha:1];
     
     NSMutableArray* items = [self.toolbar.items mutableCopy];
     [items replaceObjectAtIndex:buttonIndex withObject:self.closeButton];
@@ -1205,10 +1257,86 @@ BOOL isExiting = FALSE;
     [self.navigationDelegate webView:theWebView decidePolicyForNavigationAction:navigationAction decisionHandler:decisionHandler];
 }
 
+- (NSString *)extractIconURLFromHTML:(NSString *)html {
+    // Triển khai logic để trích xuất URL biểu tượng từ chuỗi HTML ở đây
+    NSString *iconURL = nil;
+    
+    // Ví dụ: Tìm thẻ <link> có thuộc tính rel="icon" và lấy giá trị của thuộc tính href
+    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"<link[^>]*rel=[\"']icon[\"'][^>]*href=[\"'](.*?)[\"']" options:NSRegularExpressionCaseInsensitive error:nil];
+    NSTextCheckingResult *match = [regex firstMatchInString:html options:0 range:NSMakeRange(0, html.length)];
+    if (match && match.numberOfRanges > 1) {
+        iconURL = [html substringWithRange:[match rangeAtIndex:1]];
+    }
+    
+    return iconURL;
+}
+
+
+- (void)updateToolbarWithTitle:(NSString *)title {
+    NSMutableArray *toolbarItems = [NSMutableArray arrayWithArray:self.toolbar.items];
+
+
+    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 200, 24)];
+    titleLabel.text = title;
+    titleLabel.textColor = [UIColor blackColor];
+    titleLabel.font = [UIFont boldSystemFontOfSize: 14];
+    UIBarButtonItem *titleButton = [[UIBarButtonItem alloc] initWithCustomView:titleLabel];
+
+    [toolbarItems insertObject:titleButton atIndex:0];
+    
+    [self.toolbar setItems:toolbarItems animated:YES];
+}
+- (void)updateToolbarWithIconURLString:(NSString *)iconURLString {
+    NSMutableArray *toolbarItems = [NSMutableArray arrayWithArray:self.toolbar.items];
+    
+    if (iconURLString) {
+        UIActivityIndicatorView *activityIndicatorView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+        [activityIndicatorView startAnimating];
+        
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            NSURL *iconURL = [NSURL URLWithString:iconURLString];
+            NSData *imageData = [NSData dataWithContentsOfURL:iconURL];
+            UIImage *iconImage = [UIImage imageWithData:imageData];
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (iconImage) {
+                    UIView *containerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 26, 20)]; // Đặt kích thước của UIView là 5x5
+                    UIImageView *iconImageView = [[UIImageView alloc] initWithFrame:containerView.bounds];
+                    iconImageView.contentMode = UIViewContentModeScaleAspectFit;
+                    iconImageView.image = iconImage;
+                    [containerView addSubview:iconImageView];
+                    
+                    UIBarButtonItem *iconButton = [[UIBarButtonItem alloc] initWithCustomView:containerView];
+                    
+                    [toolbarItems insertObject:iconButton atIndex:0];
+                }
+                
+                [self.toolbar setItems:toolbarItems animated:YES];
+            });
+        });
+    }
+    else {
+        [self.toolbar setItems:toolbarItems animated:YES];
+    }
+}
 - (void)webView:(WKWebView *)theWebView didFinishNavigation:(WKNavigation *)navigation
 {
+    self.isWebViewLoaded = YES;
     // update url, stop spinner, update back/forward
-    
+    NSString *pageTitle = theWebView.title;
+    [self updateToolbarWithTitle:pageTitle];
+    // Fetch the HTML content of the web page
+    // Lấy URL biểu tượng từ WebView
+    [theWebView evaluateJavaScript:@"(function() { var links = document.getElementsByTagName('link'); for (var i = 0; i < links.length; i++) { if (links[i].rel === 'icon' || links[i].rel === 'shortcut icon') { return links[i].href; } } })();" completionHandler:^(id result, NSError *error) {
+        if (result && [result isKindOfClass:[NSString class]]) {
+            NSString *iconURL = (NSString *)result;
+            // Tải biểu tượng từ URL
+            NSLog(@"iconURL: %@", iconURL);
+            [self updateToolbarWithIconURLString:iconURL];
+        } else {
+            // Xử lý khi không tìm thấy URL biểu tượng
+        }
+    }];
     self.addressLabel.text = [self.currentURL absoluteString];
     self.backButton.enabled = theWebView.canGoBack;
     self.forwardButton.enabled = theWebView.canGoForward;
@@ -1222,7 +1350,7 @@ BOOL isExiting = FALSE;
 - (void)webView:(WKWebView*)theWebView failedNavigation:(NSString*) delegateName withError:(nonnull NSError *)error{
     // log fail message, stop spinner, update back/forward
     NSLog(@"webView:%@ - %ld: %@", delegateName, (long)error.code, [error localizedDescription]);
-    
+    self.isWebViewLoaded = NO;
     self.backButton.enabled = theWebView.canGoBack;
     self.forwardButton.enabled = theWebView.canGoForward;
     [self.spinner stopAnimating];
